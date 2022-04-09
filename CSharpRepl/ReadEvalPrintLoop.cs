@@ -254,15 +254,15 @@ Run --help at the command line to view these options
     private string Reference(string? argument = null) =>
         Preprocessor("#r", argument);
 
-    private string Link(string? url = null) =>
-        prompt.HasUserOptedOutFromColor
+    private string Link(string url) =>
+        PromptConfiguration.HasUserOptedOutFromColor
         ? url
-        : AnsiEscapeCodes.BrightBlue + url + AnsiEscapeCodes.Reset;
+        : AnsiColor.Green.GetEscapeSequence() + url + AnsiEscapeCodes.Reset;
 
-    private string Code(string? code = null) =>
-        prompt.HasUserOptedOutFromColor
+    private string Code(string code) =>
+        PromptConfiguration.HasUserOptedOutFromColor
         ? code
-        : AnsiEscapeCodes.Green + code + AnsiEscapeCodes.Reset;
+        : AnsiColor.Green.GetEscapeSequence() + code + AnsiEscapeCodes.Reset;
 
     /// <summary>
     /// Produce syntax-highlighted strings like "#r reference" for the provided <paramref name="argument"/> string.
@@ -290,9 +290,9 @@ Run --help at the command line to view these options
         : AnsiColor.Green.GetEscapeSequence() + "help" + AnsiEscapeCodes.Reset;
 
     private string HelpRemote =>
-        prompt.HasUserOptedOutFromColor
+        PromptConfiguration.HasUserOptedOutFromColor
         ? @"""help-remote"""
-        : AnsiEscapeCodes.Green + "help-remote" + AnsiEscapeCodes.Reset;
+        : AnsiColor.Green.GetEscapeSequence() + "help-remote" + AnsiEscapeCodes.Reset;
 
     private string Exit =>
         PromptConfiguration.HasUserOptedOutFromColor

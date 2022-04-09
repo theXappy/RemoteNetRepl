@@ -3,10 +3,13 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using CSharpRepl.Services.Extensions;
+using CSharpRepl.Services.Roslyn;
+using CSharpRepl.Services.Roslyn.Scripting;
 using CSharpRepl.Services.SyntaxHighlighting;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
@@ -30,12 +33,14 @@ internal sealed class AutoCompleteService
     private readonly SyntaxHighlighter highlighter;
     private readonly IMemoryCache cache;
     private readonly Configuration configuration;
+    private readonly RoslynServices parent;
 
-    public AutoCompleteService(SyntaxHighlighter highlighter, IMemoryCache cache, Configuration configuration)
+    public AutoCompleteService(SyntaxHighlighter highlighter, IMemoryCache cache, Configuration configuration, RoslynServices parent)
     {
         this.highlighter = highlighter;
         this.cache = cache;
         this.configuration = configuration;
+        this.parent = parent;
     }
 
     private string? HackyVariableNameParser(string text, int caret)
@@ -95,92 +100,89 @@ internal sealed class AutoCompleteService
 
     public async Task<CompletionItemWithDescription[]> Complete(Document document, string text, int caret)
     {
-        T StealField<T>(object container, string fieldName) => (T)container?.GetType()?.GetField(fieldName, (BindingFlags)0xffff)?.GetValue(container);
-        MethodInfo StealMethod(object container, string methodName) => container?.GetType()?.GetMethod(methodName, (BindingFlags)0xffff);
-
         List<CompletionItemWithDescription> dynamicallyAssociatedMembers = new List<CompletionItemWithDescription>();
         string? varName = HackyVariableNameParser(text, caret);
         if (varName != null)
         {
-            ScriptRunner? stolenRunner = StealField<ScriptRunner?>(_parent, "scriptRunner");
+            ScriptRunner? stolenRunner = parent.Steal<ScriptRunner?>("scriptRunner");
             if (stolenRunner != null)
             {
-                ScriptState<object>? state = StealField<ScriptState<object>?>(stolenRunner, "state");
+                ScriptState<object>? state = stolenRunner.Steal<ScriptState<object>?>("state");
                 if (state != null)
                 {
                     ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
                     //Console.WriteLine($"@@@ Complete called for variable `{variable.Type}`");
-                    if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
-                    {
-                        string? shortTypeName = dro.GetType().FullName;
-                        shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
+                    //if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
+                    //{
+                    //    string? shortTypeName = dro.GetType().FullName;
+                    //    shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
 
-                        IReadOnlyDictionary<string, IProxiedMember>? members = dro.GetDynamicallyAddedMembers();
-                        foreach (var member in members)
-                        {
-                            string name = member.Key;
-                            string desc = "";
-                            switch (member.Value)
-                            {
-                                case RemoteNET.Internal.ProxiedValueMemberInfo pvmi:
-                                    desc = $"{pvmi.FullTypeName} {shortTypeName}.{name}";
-                                    if (pvmi.Type == RemoteNET.Internal.ProxiedMemberType.Property)
-                                    {
-                                        desc += " { ";
-                                        desc += (pvmi.Getter != null) ? "get; " : String.Empty;
-                                        desc += (pvmi.Setter != null) ? "set; " : String.Empty;
-                                        desc += " }";
-                                    }
-                                    desc += "\n\n";
-                                    desc += $"NOTE: This is a proxy for a remote {pvmi.Type.ToString().ToLower()}.\n" +
-                                            "Assume all types will be proxies.\n";
-                                    break;
-                                case RemoteNET.Internal.ProxiedMethodGroup pmg:
-                                    var firstOverload = pmg.First();
-                                    string parameters = string.Join(", ", firstOverload.Parameters.Select(x => $"{x.Item1.FullName} {x.Item2}").ToArray());
-                                    string returnType = firstOverload.ReturnType.FullName;
-                                    desc = $"{returnType} {name}({parameters})";
-                                    int otherOverloadsCount = pmg.Skip(1).Count();
-                                    if (otherOverloadsCount > 0)
-                                    {
-                                        desc += $" ( +{otherOverloadsCount} overloads)";
-                                    }
-                                    desc += "\n\n";
-                                    desc += "NOTE: This is a proxy for a remote function.\n" +
-                                            "Assume all types will be proxies.\n";
-                                    break;
-                            }
+                    //    System.Reflection.MemberInfo[]? members = dro.GetType().GetMembers();
+                    //    foreach (System.Reflection.MemberInfo? member in members)
+                    //    {
+                    //        string name = member.Name;
+                    //        string desc = "";
+                    //        switch (member.Value)
+                    //        {
+                    //            case RemoteNET.Internal.ProxiedValueMemberInfo pvmi:
+                    //                desc = $"{pvmi.FullTypeName} {shortTypeName}.{name}";
+                    //                if (pvmi.Type == RemoteNET.Internal.ProxiedMemberType.Property)
+                    //                {
+                    //                    desc += " { ";
+                    //                    desc += (pvmi.Getter != null) ? "get; " : String.Empty;
+                    //                    desc += (pvmi.Setter != null) ? "set; " : String.Empty;
+                    //                    desc += " }";
+                    //                }
+                    //                desc += "\n\n";
+                    //                desc += $"NOTE: This is a proxy for a remote {pvmi.Type.ToString().ToLower()}.\n" +
+                    //                        "Assume all types will be proxies.\n";
+                    //                break;
+                    //            case RemoteNET.Internal.ProxiedMethodGroup pmg:
+                    //                var firstOverload = pmg.First();
+                    //                string parameters = string.Join(", ", firstOverload.Parameters.Select(x => $"{x.Item1.FullName} {x.Item2}").ToArray());
+                    //                string returnType = firstOverload.ReturnType.FullName;
+                    //                desc = $"{returnType} {name}({parameters})";
+                    //                int otherOverloadsCount = pmg.Skip(1).Count();
+                    //                if (otherOverloadsCount > 0)
+                    //                {
+                    //                    desc += $" ( +{otherOverloadsCount} overloads)";
+                    //                }
+                    //                desc += "\n\n";
+                    //                desc += "NOTE: This is a proxy for a remote function.\n" +
+                    //                        "Assume all types will be proxies.\n";
+                    //                break;
+                    //        }
 
 
-                            System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
-                            b = b.Add("SymbolName", name);
-                            b = b.Add("ContextPosition", caret.ToString());
-                            b = b.Add("InsertionText", name);
-                            b = b.Add("ShouldProvideParenthesisCompletion", "True");
-                            b = b.Add("SymbolKind", "9");
+                    //        System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
+                    //        b = b.Add("SymbolName", name);
+                    //        b = b.Add("ContextPosition", caret.ToString());
+                    //        b = b.Add("InsertionText", name);
+                    //        b = b.Add("ShouldProvideParenthesisCompletion", "True");
+                    //        b = b.Add("SymbolKind", "9");
 
-                            System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
-                            iaBuilder = iaBuilder.Add("Method");
-                            iaBuilder = iaBuilder.Add("Public");
+                    //        System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
+                    //        iaBuilder = iaBuilder.Add("Method");
+                    //        iaBuilder = iaBuilder.Add("Public");
 
-                            TextSpan t = new TextSpan(caret, name.Length);
-                            var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
-                            {
-                                typeof(string) ,
-                                typeof(string) ,
-                                typeof(string) ,
-                                typeof(TextSpan) ,
-                                typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
-                                typeof(System.Collections.Immutable.ImmutableArray<string>),
-                                typeof(CompletionItemRules)
-                            });
-                            var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
+                    //        TextSpan t = new TextSpan(caret, name.Length);
+                    //        var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
+                    //        {
+                    //            typeof(string) ,
+                    //            typeof(string) ,
+                    //            typeof(string) ,
+                    //            typeof(TextSpan) ,
+                    //            typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
+                    //            typeof(System.Collections.Immutable.ImmutableArray<string>),
+                    //            typeof(CompletionItemRules)
+                    //        });
+                    //        var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
 
-                            Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
-                            var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, lazyTask);
-                            dynamicallyAssociatedMembers.Add(compItemWithDesc);
-                        }
-                    }
+                    //        Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
+                    //        var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, lazyTask);
+                    //        dynamicallyAssociatedMembers.Add(compItemWithDesc);
+                    //    }
+                    //}
                 }
             }
         }
