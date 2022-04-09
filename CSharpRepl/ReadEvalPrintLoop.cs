@@ -37,9 +37,23 @@ internal sealed class ReadEvalPrintLoop
         console.WriteLine("Welcome to the C# REPL (Read Eval Print Loop)!");
         console.WriteLine("Type C# expressions and statements at the prompt and press Enter to evaluate them.");
         console.WriteLine($"Type {Help} to learn more, and type {Exit} to quit.");
+        console.WriteLine($"Type {HelpRemote} to learn more about RemoteNET API.");
         console.WriteLine(string.Empty);
 
         await Preload(roslyn, console, config).ConfigureAwait(false);
+
+        string[] remoteNetUsings = new string[2]
+        {
+            "using RemoteNET;",
+            "using Process = System.Diagnostics.Process;",
+        };
+        Console.WriteLine("Applying predifined `using` statements...");
+        foreach (string usingStatement in remoteNetUsings)
+        {
+            Console.WriteLine(usingStatement);
+            roslyn.EvaluateAsync(usingStatement).Wait();
+        }
+        console.WriteLine(string.Empty);
 
         while (true)
         {
@@ -57,6 +71,11 @@ internal sealed class ReadEvalPrintLoop
                 // evaluate built in commands
                 if (commandText == "exit") { break; }
                 if (commandText == "clear") { console.Clear(); continue; }
+                if (commandText == "help-remote") 
+                {
+                    PrintRemoteNETHelp();
+                    continue;
+                }
                 if (new[] { "help", "#help", "?" }.Contains(commandText))
                 {
                     PrintHelp();
@@ -129,6 +148,70 @@ internal sealed class ReadEvalPrintLoop
         }
     }
 
+    private void PrintRemoteNETHelp()
+    {
+        console.WriteLine(
+$@"
+Complete RemoteNET API is available here:
+{Link("https://github.com/theXappy/RemoteNET")}
+
+Connecting to a Remote App
+==========================
+To start investigating a process call the static `Connect` func of RemoteApp with its name:
+{(Code(
+@"```
+    var app = RemoteApp.Connect(""target_process_name"");
+```"
+))}
+
+Finding an Object
+=================
+Use RemoteApp.QueryInstances to search the remote heap of a specific object 
+type.
+You should get back a list of candidates for the requested object.
+A candidate should be given to the RemoteApp.GetRemoteObject function to 
+get ahold of a remote object.
+{(Code(
+@"```
+    IEnumerable<CandidateObject> candidates = remoteApp.QueryInstances(""System.IO.FileSystemWatcher"");
+    RemoteObject remoteDocumentManagerEx = remoteApp.GetRemoteObject(candidates.Single());
+```"
+))}
+
+
+Working with a Remote Object
+============================
+First, you'll probably want to gain a dynamic proxy of the RemoteObject you got:
+{(Code(
+@"```
+    dynamic dynRemoteObj = myRemoteObject.Dynamify();
+```"
+))}
+
+We are doing that because the dynamic object has a nicer API. The 'raw' 
+RemoteObject can do everything too but it's required to study it's specific 
+methods instead of writing ""trivial C# statements"" like in the dynamic 
+API below.
+
+Once you have a dynamic object you can ignore the fact that it's a remote 
+one and start using it's members as if it was a local object:
+{(Code(
+@"```
+    // Reading Fields/Properties
+    Console.WriteLine(dynRemoteObject.Length);
+
+    // Invoking functions
+    string myString = dynRemoteObject.ToString();
+```"
+))}
+
+There are more to interacting with dynamic objects (like using them as 
+parameters to other functions or registering to events) and you are encourage to
+read more at the GitHub repo specified in the begining of this help message.
+"
+        );
+    }
+
     private void PrintHelp()
     {
         console.WriteLine(
@@ -171,6 +254,16 @@ Run --help at the command line to view these options
     private string Reference(string? argument = null) =>
         Preprocessor("#r", argument);
 
+    private string Link(string? url = null) =>
+        prompt.HasUserOptedOutFromColor
+        ? url
+        : AnsiEscapeCodes.BrightBlue + url + AnsiEscapeCodes.Reset;
+
+    private string Code(string? code = null) =>
+        prompt.HasUserOptedOutFromColor
+        ? code
+        : AnsiEscapeCodes.Green + code + AnsiEscapeCodes.Reset;
+
     /// <summary>
     /// Produce syntax-highlighted strings like "#r reference" for the provided <paramref name="argument"/> string.
     /// </summary>
@@ -196,7 +289,12 @@ Run --help at the command line to view these options
         ? @"""help"""
         : AnsiColor.Green.GetEscapeSequence() + "help" + AnsiEscapeCodes.Reset;
 
-    private static string Exit =>
+    private string HelpRemote =>
+        prompt.HasUserOptedOutFromColor
+        ? @"""help-remote"""
+        : AnsiEscapeCodes.Green + "help-remote" + AnsiEscapeCodes.Reset;
+
+    private string Exit =>
         PromptConfiguration.HasUserOptedOutFromColor
         ? @"""exit"""
         : AnsiColor.BrightRed.GetEscapeSequence() + "exit" + AnsiEscapeCodes.Reset;

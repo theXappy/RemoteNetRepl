@@ -12,6 +12,8 @@ using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.Classification;
 using Microsoft.CodeAnalysis.Completion;
 using Microsoft.CodeAnalysis.QuickInfo;
+using Microsoft.CodeAnalysis.Scripting;
+using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Caching.Memory;
 using PrettyPrompt.Highlighting;
 
@@ -36,8 +38,153 @@ internal sealed class AutoCompleteService
         this.configuration = configuration;
     }
 
+    private string? HackyVariableNameParser(string text, int caret)
+    {
+        if (text.Length == 0 || caret > text.Length)
+            return null;
+
+        if (text[caret - 1] != '.')
+        {
+            // Not an accessor expression
+            return null;
+        }
+
+        int pos = caret - 2;
+        int length = 0;
+        while (pos >= 0)
+        {
+            char curr = text[pos];
+            if (char.IsLetter(curr) || curr == '_' || curr == '@')
+            {
+                pos--;
+                length++;
+                continue;
+            }
+            if (char.IsDigit(curr))
+            {
+                if (pos == 0)
+                {
+                    // Seems like this variable name start at begining of the line AND witha digit. this is illegal in C#.
+                    return null;
+                }
+                char prevChar = text[pos - 1];
+                if (char.IsDigit(prevChar) || char.IsLetter(prevChar) || prevChar == '_' || prevChar == '@')
+                {
+                    pos--;
+                    length++;
+                    continue;
+                }
+                else
+                {
+                    // Some punctionation/ whitespace/ etc before digit (which start the var name). This is illegal in C#.
+                    return null;
+                }
+            }
+            if (curr == '.')
+            {
+                // Actually what we have in hand is a MEMBER of another var so we can't do anything with it.
+                return null;
+            }
+
+            // Arrived at a char which can't be in variable name. Assume we are done
+            break;
+        }
+
+        return text.Substring(pos + 1, length);
+    }
+
     public async Task<CompletionItemWithDescription[]> Complete(Document document, string text, int caret)
     {
+        T StealField<T>(object container, string fieldName) => (T)container?.GetType()?.GetField(fieldName, (BindingFlags)0xffff)?.GetValue(container);
+        MethodInfo StealMethod(object container, string methodName) => container?.GetType()?.GetMethod(methodName, (BindingFlags)0xffff);
+
+        List<CompletionItemWithDescription> dynamicallyAssociatedMembers = new List<CompletionItemWithDescription>();
+        string? varName = HackyVariableNameParser(text, caret);
+        if (varName != null)
+        {
+            ScriptRunner? stolenRunner = StealField<ScriptRunner?>(_parent, "scriptRunner");
+            if (stolenRunner != null)
+            {
+                ScriptState<object>? state = StealField<ScriptState<object>?>(stolenRunner, "state");
+                if (state != null)
+                {
+                    ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
+                    //Console.WriteLine($"@@@ Complete called for variable `{variable.Type}`");
+                    if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
+                    {
+                        string? shortTypeName = dro.GetType().FullName;
+                        shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
+
+                        IReadOnlyDictionary<string, IProxiedMember>? members = dro.GetDynamicallyAddedMembers();
+                        foreach (var member in members)
+                        {
+                            string name = member.Key;
+                            string desc = "";
+                            switch (member.Value)
+                            {
+                                case RemoteNET.Internal.ProxiedValueMemberInfo pvmi:
+                                    desc = $"{pvmi.FullTypeName} {shortTypeName}.{name}";
+                                    if (pvmi.Type == RemoteNET.Internal.ProxiedMemberType.Property)
+                                    {
+                                        desc += " { ";
+                                        desc += (pvmi.Getter != null) ? "get; " : String.Empty;
+                                        desc += (pvmi.Setter != null) ? "set; " : String.Empty;
+                                        desc += " }";
+                                    }
+                                    desc += "\n\n";
+                                    desc += $"NOTE: This is a proxy for a remote {pvmi.Type.ToString().ToLower()}.\n" +
+                                            "Assume all types will be proxies.\n";
+                                    break;
+                                case RemoteNET.Internal.ProxiedMethodGroup pmg:
+                                    var firstOverload = pmg.First();
+                                    string parameters = string.Join(", ", firstOverload.Parameters.Select(x => $"{x.Item1.FullName} {x.Item2}").ToArray());
+                                    string returnType = firstOverload.ReturnType.FullName;
+                                    desc = $"{returnType} {name}({parameters})";
+                                    int otherOverloadsCount = pmg.Skip(1).Count();
+                                    if (otherOverloadsCount > 0)
+                                    {
+                                        desc += $" ( +{otherOverloadsCount} overloads)";
+                                    }
+                                    desc += "\n\n";
+                                    desc += "NOTE: This is a proxy for a remote function.\n" +
+                                            "Assume all types will be proxies.\n";
+                                    break;
+                            }
+
+
+                            System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
+                            b = b.Add("SymbolName", name);
+                            b = b.Add("ContextPosition", caret.ToString());
+                            b = b.Add("InsertionText", name);
+                            b = b.Add("ShouldProvideParenthesisCompletion", "True");
+                            b = b.Add("SymbolKind", "9");
+
+                            System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
+                            iaBuilder = iaBuilder.Add("Method");
+                            iaBuilder = iaBuilder.Add("Public");
+
+                            TextSpan t = new TextSpan(caret, name.Length);
+                            var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
+                            {
+                                typeof(string) ,
+                                typeof(string) ,
+                                typeof(string) ,
+                                typeof(TextSpan) ,
+                                typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
+                                typeof(System.Collections.Immutable.ImmutableArray<string>),
+                                typeof(CompletionItemRules)
+                            });
+                            var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
+
+                            Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
+                            var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, lazyTask);
+                            dynamicallyAssociatedMembers.Add(compItemWithDesc);
+                        }
+                    }
+                }
+            }
+        }
+
         var cacheKey = CacheKeyPrefix + document.Name + text + caret;
         if (text != string.Empty && cache.Get<CompletionItemWithDescription[]>(cacheKey) is CompletionItemWithDescription[] cached)
             return cached;
@@ -52,6 +199,9 @@ internal sealed class AutoCompleteService
         var completionsWithDescriptions = completions?.Items
             .Select(item => new CompletionItemWithDescription(item, GetDisplayText(item), cancellationToken => GetExtendedDescriptionAsync(completionService, document, item, highlighter)))
             .ToArray() ?? Array.Empty<CompletionItemWithDescription>();
+
+        // Add auto complete info for dynamically associated members of DynamicRemoteObject
+        completionsWithDescriptions = completionsWithDescriptions.Concat(dynamicallyAssociatedMembers).ToArray();
 
         cache.Set(cacheKey, completionsWithDescriptions, DateTimeOffset.Now.AddMinutes(1));
 

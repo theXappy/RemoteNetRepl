@@ -1,0 +1,118 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.31903.59
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSharpRepl", "CSharpRepl\CSharpRepl.csproj", "{DAF35EEA-275E-4BF1-A7F0-5D2DF32FC0A5}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSharpRepl.Services", "CSharpRepl.Services\CSharpRepl.Services.csproj", "{CF37FCD2-EF71-48F8-AE06-8A07D328F24A}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{000D6020-F5D7-4CC9-A539-36914452C63B}"
+	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
+		ARCHITECTURE.md = ARCHITECTURE.md
+		nuget.config = nuget.config
+	EndProjectSection
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CSharpRepl.Tests", "CSharpRepl.Tests\CSharpRepl.Tests.csproj", "{35584632-2D73-4767-B2C0-7DB1ABB2812E}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".github", ".github", "{00E474D3-ACA6-4210-8E9B-AD94ED920647}"
+	ProjectSection(SolutionItems) = preProject
+		.github\workflows\main.yml = .github\workflows\main.yml
+		.github\workflows\release.yml = .github\workflows\release.yml
+	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RemoteNET", "RemoteNET", "{252AD778-7867-475E-B9CA-DBC1AA4564E1}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RemoteNET", "RemoteNET\src\RemoteNET\RemoteNET.csproj", "{BEB43885-6B30-454E-AF0D-EF245BB79A0B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9} = {E9771628-EF64-4DD8-9906-E7B1990A0FB9}
+		{8DF5D538-941D-44E8-803E-9E135926EBE8} = {8DF5D538-941D-44E8-803E-9E135926EBE8}
+		{71033F61-0D65-468E-81E7-A5765BCF9282} = {71033F61-0D65-468E-81E7-A5765BCF9282}
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94} = {5DE7F97C-B97B-489F-A1E4-9F9656317F94}
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C} = {0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Injector", "RemoteNET\src\Injector\Injector.vcxproj", "{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Injector_x64", "RemoteNET\src\Injector\Injector_x64.vcxproj", "{71033F61-0D65-468E-81E7-A5765BCF9282}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ScubaDiver", "RemoteNET\src\ScubaDiver\ScubaDiver.csproj", "{8DF5D538-941D-44E8-803E-9E135926EBE8}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScubaDiver.API", "RemoteNET\src\ScubaDiver.API\ScubaDiver.API.csproj", "{857F2B6F-56F2-4B88-AF31-B8C71AC86C68}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ScubaDiver_NetCore", "RemoteNET\src\ScubaDiver_NetCore\ScubaDiver_NetCore.csproj", "{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnmanagedAdapterDLL", "RemoteNET\src\UnmanagedAdapterDLL\UnmanagedAdapterDLL.vcxproj", "{5DE7F97C-B97B-489F-A1E4-9F9656317F94}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnmanagedAdapterDLL_x64", "RemoteNET\src\UnmanagedAdapterDLL_x64\UnmanagedAdapterDLL_x64.vcxproj", "{E9771628-EF64-4DD8-9906-E7B1990A0FB9}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Mixed = Debug|Mixed
+		Release|Mixed = Release|Mixed
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{DAF35EEA-275E-4BF1-A7F0-5D2DF32FC0A5}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{DAF35EEA-275E-4BF1-A7F0-5D2DF32FC0A5}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{DAF35EEA-275E-4BF1-A7F0-5D2DF32FC0A5}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{DAF35EEA-275E-4BF1-A7F0-5D2DF32FC0A5}.Release|Mixed.Build.0 = Release|Any CPU
+		{CF37FCD2-EF71-48F8-AE06-8A07D328F24A}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{CF37FCD2-EF71-48F8-AE06-8A07D328F24A}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{CF37FCD2-EF71-48F8-AE06-8A07D328F24A}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{CF37FCD2-EF71-48F8-AE06-8A07D328F24A}.Release|Mixed.Build.0 = Release|Any CPU
+		{35584632-2D73-4767-B2C0-7DB1ABB2812E}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{35584632-2D73-4767-B2C0-7DB1ABB2812E}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{35584632-2D73-4767-B2C0-7DB1ABB2812E}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{35584632-2D73-4767-B2C0-7DB1ABB2812E}.Release|Mixed.Build.0 = Release|Any CPU
+		{BEB43885-6B30-454E-AF0D-EF245BB79A0B}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{BEB43885-6B30-454E-AF0D-EF245BB79A0B}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{BEB43885-6B30-454E-AF0D-EF245BB79A0B}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{BEB43885-6B30-454E-AF0D-EF245BB79A0B}.Release|Mixed.Build.0 = Release|Any CPU
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}.Debug|Mixed.ActiveCfg = Debug|Win32
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}.Debug|Mixed.Build.0 = Debug|Win32
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}.Release|Mixed.ActiveCfg = Release|Win32
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C}.Release|Mixed.Build.0 = Release|Win32
+		{71033F61-0D65-468E-81E7-A5765BCF9282}.Debug|Mixed.ActiveCfg = Debug|x64
+		{71033F61-0D65-468E-81E7-A5765BCF9282}.Debug|Mixed.Build.0 = Debug|x64
+		{71033F61-0D65-468E-81E7-A5765BCF9282}.Release|Mixed.ActiveCfg = Release|x64
+		{71033F61-0D65-468E-81E7-A5765BCF9282}.Release|Mixed.Build.0 = Release|x64
+		{8DF5D538-941D-44E8-803E-9E135926EBE8}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{8DF5D538-941D-44E8-803E-9E135926EBE8}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{8DF5D538-941D-44E8-803E-9E135926EBE8}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{8DF5D538-941D-44E8-803E-9E135926EBE8}.Release|Mixed.Build.0 = Release|Any CPU
+		{857F2B6F-56F2-4B88-AF31-B8C71AC86C68}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{857F2B6F-56F2-4B88-AF31-B8C71AC86C68}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{857F2B6F-56F2-4B88-AF31-B8C71AC86C68}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{857F2B6F-56F2-4B88-AF31-B8C71AC86C68}.Release|Mixed.Build.0 = Release|Any CPU
+		{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76}.Debug|Mixed.ActiveCfg = Debug|Any CPU
+		{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76}.Debug|Mixed.Build.0 = Debug|Any CPU
+		{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76}.Release|Mixed.ActiveCfg = Release|Any CPU
+		{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76}.Release|Mixed.Build.0 = Release|Any CPU
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94}.Debug|Mixed.ActiveCfg = Debug|Win32
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94}.Debug|Mixed.Build.0 = Debug|Win32
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94}.Release|Mixed.ActiveCfg = Release|Win32
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94}.Release|Mixed.Build.0 = Release|Win32
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9}.Debug|Mixed.ActiveCfg = Debug|x64
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9}.Debug|Mixed.Build.0 = Debug|x64
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9}.Release|Mixed.ActiveCfg = Release|x64
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9}.Release|Mixed.Build.0 = Release|x64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{00E474D3-ACA6-4210-8E9B-AD94ED920647} = {000D6020-F5D7-4CC9-A539-36914452C63B}
+		{BEB43885-6B30-454E-AF0D-EF245BB79A0B} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{0C3EB2F7-92BA-4895-99FC-7098A16FFE8C} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{71033F61-0D65-468E-81E7-A5765BCF9282} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{8DF5D538-941D-44E8-803E-9E135926EBE8} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{857F2B6F-56F2-4B88-AF31-B8C71AC86C68} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{E4B1D78A-A2BA-454B-A721-ACFF8DA24D76} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{5DE7F97C-B97B-489F-A1E4-9F9656317F94} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+		{E9771628-EF64-4DD8-9906-E7B1990A0FB9} = {252AD778-7867-475E-B9CA-DBC1AA4564E1}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {82099E13-9449-4737-8EAE-1188CE33BC09}
+	EndGlobalSection
+EndGlobal

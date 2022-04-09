@@ -41,6 +41,7 @@ internal static class Program
             return ExitCodes.Success;
         }
 
+        config.References.Add("RemoteNET");
         var logger = InitializeLogging(config.Trace);
         var roslyn = new RoslynServices(console, config, logger);
         var (prompt, exitCode) = InitializePrompt(console, appStorage, roslyn, config);
