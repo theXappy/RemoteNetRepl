@@ -6,6 +6,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
 using System.Threading.Tasks;
 using CSharpRepl.Services.Extensions;
 using CSharpRepl.Services.Roslyn;
@@ -111,78 +112,86 @@ internal sealed class AutoCompleteService
                 if (state != null)
                 {
                     ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
-                    //Console.WriteLine($"@@@ Complete called for variable `{variable.Type}`");
-                    //if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
-                    //{
-                    //    string? shortTypeName = dro.GetType().FullName;
-                    //    shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
+                    Console.WriteLine($"@@@ Complete called for variable `{variable.Type}`");
+                    if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
+                    {
+                        string? shortTypeName = dro.GetType().FullName;
+                        shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
 
-                    //    System.Reflection.MemberInfo[]? members = dro.GetType().GetMembers();
-                    //    foreach (System.Reflection.MemberInfo? member in members)
-                    //    {
-                    //        string name = member.Name;
-                    //        string desc = "";
-                    //        switch (member.Value)
-                    //        {
-                    //            case RemoteNET.Internal.ProxiedValueMemberInfo pvmi:
-                    //                desc = $"{pvmi.FullTypeName} {shortTypeName}.{name}";
-                    //                if (pvmi.Type == RemoteNET.Internal.ProxiedMemberType.Property)
-                    //                {
-                    //                    desc += " { ";
-                    //                    desc += (pvmi.Getter != null) ? "get; " : String.Empty;
-                    //                    desc += (pvmi.Setter != null) ? "set; " : String.Empty;
-                    //                    desc += " }";
-                    //                }
-                    //                desc += "\n\n";
-                    //                desc += $"NOTE: This is a proxy for a remote {pvmi.Type.ToString().ToLower()}.\n" +
-                    //                        "Assume all types will be proxies.\n";
-                    //                break;
-                    //            case RemoteNET.Internal.ProxiedMethodGroup pmg:
-                    //                var firstOverload = pmg.First();
-                    //                string parameters = string.Join(", ", firstOverload.Parameters.Select(x => $"{x.Item1.FullName} {x.Item2}").ToArray());
-                    //                string returnType = firstOverload.ReturnType.FullName;
-                    //                desc = $"{returnType} {name}({parameters})";
-                    //                int otherOverloadsCount = pmg.Skip(1).Count();
-                    //                if (otherOverloadsCount > 0)
-                    //                {
-                    //                    desc += $" ( +{otherOverloadsCount} overloads)";
-                    //                }
-                    //                desc += "\n\n";
-                    //                desc += "NOTE: This is a proxy for a remote function.\n" +
-                    //                        "Assume all types will be proxies.\n";
-                    //                break;
-                    //        }
+                        System.Reflection.MemberInfo[]? members = dro.GetType().GetMembers();
+                        List<string> seenMethods = new List<string>();
+                        foreach (System.Reflection.MemberInfo? member in members)
+                        {
+                            string name = member.Name;
+                            string desc = "";
+                            switch (member)
+                            {
+                                case FieldInfo fi:
+                                    desc = $"{fi.GetType().FullName} {shortTypeName}.{name}";
+                                    desc += "\n\n";
+                                    desc += $"NOTE: This is a proxy for a remote {fi.FieldType.ToString().ToLower()}.\n" +
+                                            "Assume all types will be proxies.\n";
+                                    break;
+                                case PropertyInfo pi:
+                                    desc = $"{pi.GetType().FullName} {shortTypeName}.{name}";
+                                    desc += " { ";
+                                    desc += (pi.GetMethod != null) ? "get; " : String.Empty;
+                                    desc += (pi.SetMethod != null) ? "set; " : String.Empty;
+                                    desc += " }";
+                                    desc += "\n\n";
+                                    desc += $"NOTE: This is a proxy for a remote {pi.PropertyType.ToString().ToLower()}.\n" +
+                                            "Assume all types will be proxies.\n";
+                                    break; ;
+                                case MethodInfo mi:
+                                    if (!seenMethods.Contains(mi.Name))
+                                    {
+                                        var firstOverload = mi;
+                                        string parameters = string.Join(", ", firstOverload.GetParameters().Select(pi => $"{pi.ParameterType.FullName} {pi.Name}").ToArray());
+                                        string returnType = firstOverload.ReturnType.FullName;
+                                        desc = $"{returnType} {name}({parameters})";
+                                        int otherOverloadsCount = members.OfType<MemberInfo>().Where(mi2 => mi2.Name == mi.Name).Count() - 1;
+                                        if (otherOverloadsCount > 0)
+                                        {
+                                            desc += $" ( +{otherOverloadsCount} overloads)";
+                                        }
+                                        desc += "\n\n";
+                                        desc += "NOTE: This is a proxy for a remote function.\n" +
+                                                "Assume all types will be proxies.\n";
+                                    }
+                                    break;
+                            }
 
 
-                    //        System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
-                    //        b = b.Add("SymbolName", name);
-                    //        b = b.Add("ContextPosition", caret.ToString());
-                    //        b = b.Add("InsertionText", name);
-                    //        b = b.Add("ShouldProvideParenthesisCompletion", "True");
-                    //        b = b.Add("SymbolKind", "9");
+                            System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
+                            b = b.Add("SymbolName", name);
+                            b = b.Add("ContextPosition", caret.ToString());
+                            b = b.Add("InsertionText", name);
+                            b = b.Add("ShouldProvideParenthesisCompletion", "True");
+                            b = b.Add("SymbolKind", "9");
 
-                    //        System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
-                    //        iaBuilder = iaBuilder.Add("Method");
-                    //        iaBuilder = iaBuilder.Add("Public");
+                            System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
+                            iaBuilder = iaBuilder.Add("Method");
+                            iaBuilder = iaBuilder.Add("Public");
 
-                    //        TextSpan t = new TextSpan(caret, name.Length);
-                    //        var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
-                    //        {
-                    //            typeof(string) ,
-                    //            typeof(string) ,
-                    //            typeof(string) ,
-                    //            typeof(TextSpan) ,
-                    //            typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
-                    //            typeof(System.Collections.Immutable.ImmutableArray<string>),
-                    //            typeof(CompletionItemRules)
-                    //        });
-                    //        var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
+                            TextSpan t = new TextSpan(caret, name.Length);
+                            var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
+                            {
+                                typeof(string) ,
+                                typeof(string) ,
+                                typeof(string) ,
+                                typeof(TextSpan) ,
+                                typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
+                                typeof(System.Collections.Immutable.ImmutableArray<string>),
+                                typeof(CompletionItemRules)
+                            });
+                            var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
 
-                    //        Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
-                    //        var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, lazyTask);
-                    //        dynamicallyAssociatedMembers.Add(compItemWithDesc);
-                    //    }
-                    //}
+                            Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
+                            FormattedString formattedDesc = new FormattedString(desc, ConsoleFormat.None);
+                            var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, name, (cancelToken) => Task.FromResult(formattedDesc));
+                            dynamicallyAssociatedMembers.Add(compItemWithDesc);
+                        }
+                    }
                 }
             }
         }
