@@ -112,7 +112,7 @@ internal sealed class AutoCompleteService
                 if (state != null)
                 {
                     ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
-                    Console.WriteLine($"@@@ Complete called for variable `{variable.Type}`");
+                    Debug.WriteLine($"@@@ Complete called for variable `{variable?.Type}`");
                     if (variable?.Value is RemoteNET.Internal.DynamicRemoteObject dro)
                     {
                         string? shortTypeName = dro.GetType().FullName;
