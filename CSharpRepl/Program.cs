@@ -42,6 +42,7 @@ internal static class Program
         }
 
         config.References.Add("RemoteNET");
+        config.References.Add("ScubaDiver.API");
         var logger = InitializeLogging(config.Trace);
         var roslyn = new RoslynServices(console, config, logger);
         var (prompt, exitCode) = InitializePrompt(console, appStorage, roslyn, config);
