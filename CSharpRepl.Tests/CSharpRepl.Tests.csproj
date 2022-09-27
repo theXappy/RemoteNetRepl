@@ -82,6 +82,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.3.2" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.1" />
     <PackageReference Include="NSubstitute" Version="4.4.0" />
     <PackageReference Include="PrettyPrompt" Version="4.0.0" />
     <PackageReference Include="System.IO.Abstractions.TestingHelpers" Version="17.2.3" />
@@ -103,5 +104,6 @@
   <ItemGroup>
     <ProjectReference Include="..\CSharpRepl.Services\CSharpRepl.Services.csproj" />
     <ProjectReference Include="..\CSharpRepl\CSharpRepl.csproj" />
+    <ProjectReference Include="..\RemoteNET\src\ScubaDiver.API\ScubaDiver.API.csproj" />
   </ItemGroup>
 </Project>
