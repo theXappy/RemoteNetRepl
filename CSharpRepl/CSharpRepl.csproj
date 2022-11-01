@@ -24,6 +24,7 @@
     <PackageProjectUrl>https://github.com/waf/CSharpRepl</PackageProjectUrl>
     <PackageReleaseNotes>https://github.com/waf/CSharpRepl/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <AssemblyName>rnet-repl</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>

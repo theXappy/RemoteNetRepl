@@ -26,6 +26,7 @@
     <PackageReference Include="Microsoft.Extensions.DependencyModel" Version="6.0.0" />
     <PackageReference Include="NuGet.PackageManagement" Version="6.3.1" />
     <PackageReference Include="PrettyPrompt" Version="4.0.0" />
+    <PackageReference Include="RemoteNET" Version="1.0.1.43" />
     <PackageReference Include="System.IO.Abstractions" Version="17.2.3" />
   </ItemGroup>
 
@@ -33,10 +34,6 @@
     <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
     <_Parameter1>CSharpRepl.Tests</_Parameter1>
     </AssemblyAttribute>
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\RemoteNET\src\RemoteNET\RemoteNET.csproj" />
   </ItemGroup>
 
   <ItemGroup>
