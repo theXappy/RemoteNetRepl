@@ -4,6 +4,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using CSharpRepl.PrettyPromptConfig;
@@ -42,9 +43,42 @@ internal sealed class ReadEvalPrintLoop
         console.WriteLine("Welcome to the C# REPL (Read Eval Print Loop)!");
         console.WriteLine("Type C# expressions and statements at the prompt and press Enter to evaluate them.");
         console.WriteLine($"Type {Help} to learn more, {Exit} to quit, and {Clear} to clear your terminal.");
+        console.WriteLine($"Type {HelpRemote} to learn more about RemoteNET API.");
         console.WriteLine(string.Empty);
 
         await Preload(roslyn, console, config).ConfigureAwait(false);
+
+        string[] remoteNetUsings = new string[2]
+        {
+            "using RemoteNET;",
+            "using Process = System.Diagnostics.Process;",
+        };
+        Console.WriteLine("Applying predifined `using` statements...");
+        foreach (string usingStatement in remoteNetUsings)
+        {
+            Console.WriteLine(usingStatement);
+            roslyn.EvaluateAsync(usingStatement).Wait();
+        }
+        console.WriteLine(string.Empty);
+
+        if (File.Exists(config.CmdLineArgStatementsFile))
+        {
+            Console.WriteLine("Running statments provided via command line args...");
+            using(FileStream fs = File.OpenRead(config.CmdLineArgStatementsFile))
+            using (StreamReader sr = new StreamReader(fs))
+            {
+                while (!sr.EndOfStream)
+                {
+                    string line = sr.ReadLine();
+                    if(string.IsNullOrWhiteSpace(line))
+                        continue;
+                    Console.WriteLine(line);
+                    roslyn.EvaluateAsync(line).Wait();
+                }
+            }
+
+            Console.WriteLine();
+        }
 
         while (true)
         {
@@ -62,6 +96,11 @@ internal sealed class ReadEvalPrintLoop
                 // evaluate built in commands
                 if (commandText == "exit") { break; }
                 if (commandText == "clear") { console.Clear(); continue; }
+                if (commandText == "help_remote") 
+                {
+                    PrintRemoteNETHelp();
+                    continue;
+                }
                 if (new[] { "help", "#help", "?" }.Contains(commandText))
                 {
                     PrintHelp(config.KeyBindings, config.SubmitPromptDetailedKeys);
@@ -145,6 +184,72 @@ internal sealed class ReadEvalPrintLoop
         }
     }
 
+    private void PrintRemoteNETHelp()
+    {
+        console.WriteLine(
+$@"
+Complete RemoteNET API is available here:
+{Link("https://github.com/theXappy/RemoteNET")}
+
+Connecting to a Remote App
+==========================
+To start investigating a process call the static `Connect` func of RemoteApp with its name:
+{(Code(
+@"```
+    // For .NET targets
+    RemoteApp remoteApp = RemoteAppFactory.Connect(""MyDotNetTarget.exe"", RuntimeType.Managed);
+    // For MSVC C++ target
+    RemoteApp remoteApp = RemoteAppFactory.Connect(""MyNativeTarget.exe"", RuntimeType.Unmanaged);
+```"
+))}
+
+Finding an Object
+=================
+Use RemoteApp.QueryInstances to search the remote heap of a specific object 
+type.
+You should get back a list of candidates for the requested object.
+A candidate should be given to the RemoteApp.GetRemoteObject function to 
+get ahold of a remote object.
+{(Code(
+@"```
+    IEnumerable<CandidateObject> candidates = remoteApp.QueryInstances(""System.IO.FileSystemWatcher"");
+    RemoteObject remoteDocumentManagerEx = remoteApp.GetRemoteObject(candidates.Single());
+```"
+))}
+
+
+Working with a Remote Object
+============================
+First, you'll probably want to gain a dynamic proxy of the RemoteObject you got:
+{(Code(
+@"```
+    dynamic dynRemoteObj = myRemoteObject.Dynamify();
+```"
+))}
+
+We are doing that because the dynamic object has a nicer API. The 'raw' 
+RemoteObject can do everything too but it's required to learn its specific 
+methods instead of writing ""trivial"" C# statements, like in the dynamic 
+API below.
+
+Once you have a dynamic object you can ignore the fact that it's a remote 
+one and start using it's members as if it was a local object:
+{(Code(
+@"```
+    // Reading Fields/Properties
+    Console.WriteLine(dynRemoteObject.Length);
+
+    // Invoking functions
+    string myString = dynRemoteObject.ToString();
+```"
+))}
+
+There are more to interacting with dynamic objects (like using them as 
+parameters to other functions or registering to events) and you are encourage to
+read more at the GitHub repo specified in the beginning of this help message.
+"
+        );
+    }
 
     private void PrintHelp(KeyBindings keyBindings, KeyPressPatterns submitPromptDetailedKeys)
     {
@@ -209,7 +314,12 @@ Run [green]--help[/] at the command line to view these options.
         ? @"""help"""
         : AnsiColor.Green.GetEscapeSequence() + "help" + AnsiEscapeCodes.Reset;
 
-    private static string Exit =>
+    private string HelpRemote =>
+        PromptConfiguration.HasUserOptedOutFromColor
+        ? @"""help_remote"""
+        : AnsiColor.Green.GetEscapeSequence() + "help_remote" + AnsiEscapeCodes.Reset;
+
+    private string Exit =>
         PromptConfiguration.HasUserOptedOutFromColor
         ? @"""exit"""
         : AnsiColor.BrightRed.GetEscapeSequence() + "exit" + AnsiEscapeCodes.Reset;

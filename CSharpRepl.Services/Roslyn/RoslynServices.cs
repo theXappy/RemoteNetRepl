@@ -99,7 +99,7 @@ public sealed partial class RoslynServices
             this.disassembler = new Disassembler(parseOptions, compilationOptions, referenceService, scriptRunner);
             this.prettyPrinter = new PrettyPrinter(console, highlighter, config);
             this.symbolExplorer = new SymbolExplorer(referenceService, scriptRunner);
-            this.autocompleteService = new AutoCompleteService(highlighter, cache, config);
+            this.autocompleteService = new AutoCompleteService(highlighter, cache, config, this);
             logger.Log("Background initialization complete");
         });
 

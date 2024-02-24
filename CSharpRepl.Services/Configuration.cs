@@ -44,6 +44,7 @@ public sealed class Configuration
     ];
 
     public HashSet<string> References { get; }
+    public string CmdLineArgStatementsFile { get; }
     public HashSet<string> Usings { get; }
     public string Framework { get; }
     public bool Trace { get; }
@@ -62,8 +63,7 @@ public sealed class Configuration
     public KeyBindings KeyBindings { get; }
     public KeyPressPatterns SubmitPromptDetailedKeys { get; }
 
-    public Configuration(
-        string[]? references = null,
+    public Configuration(string[]? references = null,
         string[]? usings = null,
         string? framework = null,
         bool trace = false,
@@ -82,11 +82,13 @@ public sealed class Configuration
         string[]? submitPromptKeyPatterns = null,
         string[]? submitPromptDetailedKeyPatterns = null,
         OpenAIConfiguration? openAIConfiguration = null,
-        string? cultureName = null)
+        string? cultureName = null,
+        string? cmdLineArgStatementsFile = null)
     {
         References = references?.ToHashSet() ?? [];
         Usings = usings?.ToHashSet() ?? [];
         Framework = framework ?? FrameworkDefault;
+        CmdLineArgStatementsFile = cmdLineArgStatementsFile;
         Trace = trace;
         UseTerminalPaletteTheme = useTerminalPaletteTheme;
 

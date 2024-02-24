@@ -162,6 +162,15 @@ internal static class CommandLine
         AllowMultipleArgumentsPerToken = true,
     };
 
+    private static readonly Option<string?> StatementsFile = new(
+        aliases: new[] { "--statementsFile" },
+        description: "Path to a file containing statements to run before giving use reins to the user"
+    )
+    {
+        AllowMultipleArgumentsPerToken = true,
+    };
+
+
     private static readonly Option<string[]?> SubmitPromptDetailedKeyBindings = new(
         aliases: ["--submitPromptDetailedKeys"],
         description: "Key binding to submit the prompt with detailed output. Can be specified multiple times."
@@ -202,6 +211,7 @@ internal static class CommandLine
             OpenAIApiKey, OpenAIPrompt, OpenAIModel, OpenAIHistoryCount, OpenAITemperature, OpenAITopProbability,
             TriggerCompletionListKeyBindings, NewLineKeyBindings, SubmitPromptKeyBindings, SubmitPromptDetailedKeyBindings,
             Configure, Culture,
+            StatementsFile
         };
         var commandLine = new CommandLineBuilder(availableCommands)
             .EnableLegacyDoubleDashBehavior() // for passing tokens after "--" as load script arguments
@@ -254,7 +264,8 @@ internal static class CommandLine
                 temperature: commandLine.GetValueForOption(OpenAITemperature) ?? OpenAICompleteService.DefaultTemperature,
                 topProbability: commandLine.GetValueForOption(OpenAITopProbability)
             ),
-            cultureName: commandLine.GetValueForOption(Culture)
+            cultureName: commandLine.GetValueForOption(Culture),
+            cmdLineArgStatementsFile: commandLine.GetValueForOption(StatementsFile)
         );
 
         return config;

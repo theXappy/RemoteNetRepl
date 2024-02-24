@@ -44,6 +44,9 @@ internal static class Program
             return ExitCodes.Success;
         }
 
+        config.References.Add("RemoteNET");
+        config.References.Add("RemoteNET.Common");
+        config.References.Add("ScubaDiver.API");
         // initialize roslyn
         var logger = InitializeLogging(config.Trace);
         var roslyn = new RoslynServices(console, config, logger);

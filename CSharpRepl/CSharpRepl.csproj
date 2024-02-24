@@ -7,6 +7,8 @@
     <RollForward>LatestMajor</RollForward>
     <LangVersion>latest</LangVersion>
     <Nullable>enable</Nullable>
+    <WarningsNotAsErrors>619</WarningsNotAsErrors>
+
 
     <Description>A dotnet global tool for a command line C# REPL with syntax highlighting. Explore the language, libraries and NuGet packages interactively.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
@@ -22,6 +24,7 @@
     <PackageProjectUrl>https://github.com/waf/CSharpRepl</PackageProjectUrl>
     <PackageReleaseNotes>https://github.com/waf/CSharpRepl/blob/main/CHANGELOG.md</PackageReleaseNotes>
     <PackageLicenseExpression>MPL-2.0</PackageLicenseExpression>
+    <AssemblyName>rnet-repl</AssemblyName>
   </PropertyGroup>
 
   <ItemGroup>
