@@ -146,7 +146,24 @@ internal sealed class AutoCompleteService
                                     if (!seenMethods.Contains(mi.Name))
                                     {
                                         var firstOverload = mi;
-                                        string parameters = string.Join(", ", firstOverload.GetParameters().Select(pi => $"{(pi?.ParameterType?.FullName ?? "???")} {pi.Name}").ToArray());
+                                        string parameters = "";
+                                        foreach (var pi in firstOverload.GetParameters())
+                                        {
+                                            if (parameters != "")
+                                            {
+                                                parameters += ", ";
+                                            }
+
+                                            try
+                                            {
+                                                parameters += $"{(pi?.ParameterType?.FullName ?? "???")} {pi.Name}";
+                                            }
+                                            catch (Exception ex)
+                                            {
+                                                parameters += $"??? UnknownName";
+                                            }
+                                        }
+
                                         string returnType = firstOverload?.ReturnType?.FullName ?? "???";
                                         desc = $"{returnType} {name}({parameters})";
                                         int otherOverloadsCount = members.OfType<MemberInfo>().Where(mi2 => mi2.Name == mi.Name).Count() - 1;
