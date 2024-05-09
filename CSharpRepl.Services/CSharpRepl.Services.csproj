@@ -69,6 +69,11 @@
 	  <EmbeddedResource Include="RuntimeHelper.cs" />
 	</ItemGroup>
 
+
+	<ItemGroup>
+	  <ProjectReference Include="..\..\..\RemoteNET\src\RemoteNET\RemoteNET.csproj" />
+	</ItemGroup>
+
   <ItemGroup>
     <None Update="runtime.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
