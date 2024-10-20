@@ -250,6 +250,15 @@ read more at the GitHub repo specified in the beginning of this help message.
 "
         );
     }
+    string Link(string url) =>
+        PromptConfiguration.HasUserOptedOutFromColor
+        ? url
+        : AnsiColor.Green.GetEscapeSequence() + url + AnsiEscapeCodes.Reset;
+
+    string Code(string code) =>
+        PromptConfiguration.HasUserOptedOutFromColor
+        ? code
+        : AnsiColor.Green.GetEscapeSequence() + code + AnsiEscapeCodes.Reset;
 
     private void PrintHelp(KeyBindings keyBindings, KeyPressPatterns submitPromptDetailedKeys)
     {
@@ -290,16 +299,6 @@ Run [green]--help[/] at the command line to view these options.
         ));
 
         string Reference(string? argument = null) => Preprocessor("#r", argument);
-
-        string Link(string url) =>
-            PromptConfiguration.HasUserOptedOutFromColor
-            ? url
-            : AnsiColor.Green.GetEscapeSequence() + url + AnsiEscapeCodes.Reset;
-
-        string Code(string code) =>
-            PromptConfiguration.HasUserOptedOutFromColor
-            ? code
-            : AnsiColor.Green.GetEscapeSequence() + code + AnsiEscapeCodes.Reset;
 
         string Preprocessor(string keyword, string? argument = null)
         {
