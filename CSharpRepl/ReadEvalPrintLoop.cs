@@ -1,4 +1,4 @@
-// This Source Code Form is subject to the terms of the Mozilla Public
+﻿// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
@@ -64,13 +64,13 @@ internal sealed class ReadEvalPrintLoop
         if (File.Exists(config.CmdLineArgStatementsFile))
         {
             Console.WriteLine("Running statments provided via command line args...");
-            using(FileStream fs = File.OpenRead(config.CmdLineArgStatementsFile))
+            using (FileStream fs = File.OpenRead(config.CmdLineArgStatementsFile))
             using (StreamReader sr = new StreamReader(fs))
             {
                 while (!sr.EndOfStream)
                 {
                     string line = sr.ReadLine();
-                    if(string.IsNullOrWhiteSpace(line))
+                    if (string.IsNullOrWhiteSpace(line))
                         continue;
                     Console.WriteLine(line);
                     roslyn.EvaluateAsync(line).Wait();
@@ -96,7 +96,7 @@ internal sealed class ReadEvalPrintLoop
                 // evaluate built in commands
                 if (commandText == "exit") { break; }
                 if (commandText == "clear") { console.Clear(); continue; }
-                if (commandText == "help_remote") 
+                if (commandText == "help_remote")
                 {
                     PrintRemoteNETHelp();
                     continue;
