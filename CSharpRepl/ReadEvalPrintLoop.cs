@@ -1,4 +1,4 @@
-﻿// This Source Code Form is subject to the terms of the Mozilla Public
+// This Source Code Form is subject to the terms of the Mozilla Public
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
@@ -290,6 +290,16 @@ Run [green]--help[/] at the command line to view these options.
         ));
 
         string Reference(string? argument = null) => Preprocessor("#r", argument);
+
+        string Link(string url) =>
+            PromptConfiguration.HasUserOptedOutFromColor
+            ? url
+            : AnsiColor.Green.GetEscapeSequence() + url + AnsiEscapeCodes.Reset;
+
+        string Code(string code) =>
+            PromptConfiguration.HasUserOptedOutFromColor
+            ? code
+            : AnsiColor.Green.GetEscapeSequence() + code + AnsiEscapeCodes.Reset;
 
         string Preprocessor(string keyword, string? argument = null)
         {
