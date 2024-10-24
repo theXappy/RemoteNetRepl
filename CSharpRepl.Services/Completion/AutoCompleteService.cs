@@ -129,7 +129,7 @@ internal sealed class AutoCompleteService
                                 case FieldInfo fi:
                                     desc = $"{(fi.FieldType?.FullName ?? "???")} {shortTypeName}.{name}";
                                     desc += "\n\n";
-                                    desc += $"NOTE: This is a proxy for a remote {fi.FieldType.ToString().ToLower()}.\n" +
+                                    desc += $"NOTE: This is a proxy for a remote {fi?.FieldType?.ToString()?.ToLower()}.\n" +
                                             "Assume all types will be proxies.\n";
                                     break;
                                 case PropertyInfo pi:
@@ -156,9 +156,9 @@ internal sealed class AutoCompleteService
 
                                             try
                                             {
-                                                parameters += $"{(pi?.ParameterType?.FullName ?? "???")} {pi.Name}";
+                                                parameters += $"{(pi?.ParameterType?.FullName ?? "???")} {pi?.Name}";
                                             }
-                                            catch (Exception ex)
+                                            catch (Exception)
                                             {
                                                 parameters += $"??? UnknownName";
                                             }
@@ -179,19 +179,24 @@ internal sealed class AutoCompleteService
                             }
 
 
-                            System.Collections.Immutable.ImmutableDictionary<string, string> b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
+                            //
+                            // SS: Everything below is cursed.
+                            // We're trying to get a the function `Created` from `CompletionItem`
+                            // But Microsoft REALLY didn't want us to use it, so it's not publish and the arguments list is sh*t.
+                            //
+                            var b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
                             b = b.Add("SymbolName", name);
                             b = b.Add("ContextPosition", caret.ToString());
                             b = b.Add("InsertionText", name);
                             b = b.Add("ShouldProvideParenthesisCompletion", "True");
                             b = b.Add("SymbolKind", "9");
 
-                            System.Collections.Immutable.ImmutableArray<string> iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
+                            var iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
                             iaBuilder = iaBuilder.Add("Method");
                             iaBuilder = iaBuilder.Add("Public");
 
                             TextSpan t = new TextSpan(caret, name.Length);
-                            var theCreatFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
+                            MethodInfo? theCreateFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
                             {
                                 typeof(string) ,
                                 typeof(string) ,
@@ -201,12 +206,29 @@ internal sealed class AutoCompleteService
                                 typeof(System.Collections.Immutable.ImmutableArray<string>),
                                 typeof(CompletionItemRules)
                             });
-                            var compItem = theCreatFuncTheyTriedToHide.Invoke(null, new object[] { name, name, name, t, b, iaBuilder, null });
+                            if (theCreateFuncTheyTriedToHide == null)
+                            {
+                                throw new Exception(
+                                    $"We tried getting the `Create` method (non-public) out of the type {typeof(CompletionItem).FullName} but we failed. " +
+                                    $"MS possibly changed the signatured.");
+                            }
+
+                            object? compItemObj = theCreateFuncTheyTriedToHide?.Invoke(null, [name, name, name, t, b, iaBuilder, null]);
+                            if (compItemObj == null)
+                            {
+                                throw new Exception("Create method returned a null when trying to compose a `CompletionItem`");
+                            }
+                            if (compItemObj is not CompletionItem compItem)
+                            {
+                                throw new Exception(
+                                    $"Create method returned a non-null value but we couldn't cast it to {typeof(CompletionItem).FullName}. " +
+                                    $"Actual type: {compItemObj.GetType().FullName}");
+                            }
 
                             Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
                             FormattedString formattedDesc = new FormattedString(desc, ConsoleFormat.None);
-                            var compItemWithDesc = new CompletionItemWithDescription(compItem as CompletionItem, name, (cancelToken) => Task.FromResult(formattedDesc));
-                            dynamicallyAssociatedMembers.Add(compItemWithDesc);
+                                var compItemWithDesc = new CompletionItemWithDescription(compItem, name, (cancelToken) => Task.FromResult(formattedDesc));
+                                dynamicallyAssociatedMembers.Add(compItemWithDesc);
                         }
                     }
                 }

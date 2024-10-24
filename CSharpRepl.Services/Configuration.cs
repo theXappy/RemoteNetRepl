@@ -10,6 +10,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text.Json;
+using System.Web;
 using CSharpRepl.Services.Roslyn.References;
 using CSharpRepl.Services.Theming;
 using Microsoft.CodeAnalysis.Completion;
@@ -88,7 +89,7 @@ public sealed class Configuration
         References = references?.ToHashSet() ?? [];
         Usings = usings?.ToHashSet() ?? [];
         Framework = framework ?? FrameworkDefault;
-        CmdLineArgStatementsFile = cmdLineArgStatementsFile;
+        CmdLineArgStatementsFile = cmdLineArgStatementsFile ?? string.Empty;
         Trace = trace;
         UseTerminalPaletteTheme = useTerminalPaletteTheme;
 

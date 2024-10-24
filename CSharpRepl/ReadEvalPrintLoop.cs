@@ -69,7 +69,7 @@ internal sealed class ReadEvalPrintLoop
             {
                 while (!sr.EndOfStream)
                 {
-                    string line = sr.ReadLine();
+                    string? line = sr.ReadLine();
                     if (string.IsNullOrWhiteSpace(line))
                         continue;
                     Console.WriteLine(line);
@@ -250,12 +250,12 @@ read more at the GitHub repo specified in the beginning of this help message.
 "
         );
     }
-    string Link(string url) =>
+    private string Link(string url) =>
         PromptConfiguration.HasUserOptedOutFromColor
         ? url
         : AnsiColor.Green.GetEscapeSequence() + url + AnsiEscapeCodes.Reset;
 
-    string Code(string code) =>
+    private string Code(string code) =>
         PromptConfiguration.HasUserOptedOutFromColor
         ? code
         : AnsiColor.Green.GetEscapeSequence() + code + AnsiEscapeCodes.Reset;

@@ -6,7 +6,7 @@ namespace CSharpRepl.Services.Extensions;
 public static class ReflectionTricks
 {
     private static BindingFlags ALL = BindingFlags.FlattenHierarchy | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.Static;
-    public static T Steal<T>(Type t, object o, string member)
+    public static T? Steal<T>(Type t, object? o, string member)
     {
         var value = t.GetFields(ALL).SingleOrDefault(fld => fld.Name == member)?.GetValue(o);
         if (value != null) return (T)value;
@@ -21,15 +21,20 @@ public static class ReflectionTricks
         // Just a single overload (or null)
     }
 
-    public static T Steal<T>(this object o, string member) => Steal<T>(o.GetType(), o, member);
-    public static T Steal<T>(this Type o, string member) => Steal<T>(o, null, member);
-    public static T DeepSteal<T>(this object o, string pathToInnerMember)
+    public static T? Steal<T>(this object o, string member) => Steal<T>(o.GetType(), o, member);
+    public static T? Steal<T>(this Type o, string member) => Steal<T>(o, null, member);
+    public static T? DeepSteal<T>(this object o, string pathToInnerMember)
     {
         if (pathToInnerMember.Contains("."))
         {
             string rest = pathToInnerMember.Substring(0, pathToInnerMember.LastIndexOf('.'));
             pathToInnerMember = pathToInnerMember.Substring(pathToInnerMember.LastIndexOf('.') + 1);
-            o = DeepSteal<object>(o, rest);
+            object? nextObj = DeepSteal<object>(o, rest);
+            if (nextObj == null)
+            {
+                throw new Exception("One of the intermediate Stealing steps produced a `this` value of `null`");
+            }
+            o = nextObj;
         }
         return Steal<T>(o, pathToInnerMember);
     }
@@ -48,11 +53,28 @@ public static class ReflectionTricks
     public static void SetMember<T>(this object o, string member, T newValue) =>
         SetMember(o.GetType(), o, member, newValue);
 
-    public static void IndianaJones<T>(this object o, string member, Func<T, T> replacer) =>
+    public static void IndianaJones<T>(this object o, string member, Func<T?, T?> replacer) =>
         o.SetMember(member, replacer(o.Steal<T>(member)));
 
-    public static MethodInfo Overload(this MethodInfo[] overloads, params Type[] types) =>
-        overloads.SingleOrDefault(
-            mi => mi.GetParameters().Length == types.Length &&
-                    mi.GetParameters().Zip(types, (pi, expectedType) => pi.ParameterType.IsAssignableFrom(expectedType)).All(b => b));
+    public static MethodInfo? Overload(this MethodInfo[] overloads, params Type[] types)
+    {
+        // Check if all parameters of a MethodInfo match the requested parameters count and types
+        bool CheckParameters(MethodInfo mi)
+        {
+            // Check count
+            if (mi.GetParameters().Length != types.Length)
+                return false;
+            // Check types
+            if (!mi.GetParameters().Zip(types, CheckSingleParameter).All(b => b))
+                return false;
+            return true;
+
+            bool CheckSingleParameter(ParameterInfo pi, Type expectedType)
+            {
+                return pi.ParameterType.IsAssignableFrom(expectedType);
+            }
+        }
+
+        return overloads?.SingleOrDefault(CheckParameters);
+    }
 }
