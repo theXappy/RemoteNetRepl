@@ -59,7 +59,7 @@
 		<PackageReference Include="NuGet.Versioning" Version="6.11.1" PrivateAssets="all" />
 		<PackageReference Include="System.Security.Cryptography.Pkcs" Version="8.0.1" />
 		<PackageReference Include="System.Security.Cryptography.Xml" Version="8.0.2" />
-		<PackageReference Include="System.Text.Json" Version="8.0.5" />
+		<PackageReference Include="System.Text.Json" Version="9.0.1" />
 	</ItemGroup>
 
 
