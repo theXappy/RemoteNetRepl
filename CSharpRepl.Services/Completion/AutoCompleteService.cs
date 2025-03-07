@@ -20,7 +20,8 @@ using Microsoft.CodeAnalysis.Scripting;
 using Microsoft.CodeAnalysis.Text;
 using Microsoft.Extensions.Caching.Memory;
 using PrettyPrompt.Highlighting;
-
+using RemoteNET.Common;
+using RemoteNET.Internal.Reflection;
 using PrettyPromptCompletionItem = PrettyPrompt.Completion.CompletionItem;
 
 namespace CSharpRepl.Services.Completion;
@@ -154,9 +155,13 @@ internal sealed class AutoCompleteService
                                                 parameters += ", ";
                                             }
 
+                                            string? fullTypeName = (pi as RemoteParameterInfo)?.TypeFullName;
+                                            fullTypeName ??= pi.ParameterType.FullName;
+                                            fullTypeName ??= "???";
+
                                             try
                                             {
-                                                parameters += $"{(pi?.ParameterType?.FullName ?? "???")} {pi?.Name}";
+                                                parameters += $"{fullTypeName} {pi?.Name}";
                                             }
                                             catch (Exception)
                                             {
@@ -164,7 +169,9 @@ internal sealed class AutoCompleteService
                                             }
                                         }
 
-                                        string returnType = firstOverload?.ReturnType?.FullName ?? "???";
+                                        string returnType = (firstOverload as RemoteRttiMethodInfo)?.LazyRetType.TypeName;
+                                        returnType ??= firstOverload?.ReturnType?.FullName;
+                                        returnType ??= "???";
                                         desc = $"{returnType} {name}({parameters})";
                                         int otherOverloadsCount = members.OfType<MemberInfo>().Where(mi2 => mi2.Name == mi.Name).Count() - 1;
                                         if (otherOverloadsCount > 0)
