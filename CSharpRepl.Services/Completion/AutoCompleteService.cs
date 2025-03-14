@@ -45,18 +45,31 @@ internal sealed class AutoCompleteService
         this.parent = parent;
     }
 
-    private string? HackyVariableNameParser(string text, int caret)
+
+    private string[]? HackyVariableNameParser(string text, int caret)
     {
         if (text.Length == 0 || caret > text.Length)
             return null;
 
-        if (text[caret - 1] != '.')
-        {
-            // Not an accessor expression
+        if (!text.EndsWith('.'))
             return null;
-        }
 
-        int pos = caret - 2;
+        string withoutLastDot = text.Substring(0, text.Length - 1);
+
+        string?[] res = withoutLastDot.Split('.')
+            .Select(part => HackySingleVariableNameParser(part, part.Length))
+            .ToArray();
+        if (res.Any(x => x == null))
+            return null;
+        return res;
+    }
+
+    private string? HackySingleVariableNameParser(string text, int caret)
+    {
+        if (text.Length == 0 || caret > text.Length)
+            return null;
+
+        int pos = caret - 1;
         int length = 0;
         while (pos >= 0)
         {
@@ -87,12 +100,6 @@ internal sealed class AutoCompleteService
                     return null;
                 }
             }
-            if (curr == '.')
-            {
-                // Actually what we have in hand is a MEMBER of another var so we can't do anything with it.
-                return null;
-            }
-
             // Arrived at a char which can't be in variable name. Assume we are done
             break;
         }
@@ -102,145 +109,7 @@ internal sealed class AutoCompleteService
 
     public async Task<CompletionItemWithDescription[]> Complete(Document document, string text, int caret)
     {
-        List<CompletionItemWithDescription> dynamicallyAssociatedMembers = new List<CompletionItemWithDescription>();
-        string? varName = HackyVariableNameParser(text, caret);
-        if (varName != null)
-        {
-            ScriptRunner? stolenRunner = parent.Steal<ScriptRunner?>("scriptRunner");
-            if (stolenRunner != null)
-            {
-                ScriptState<object>? state = stolenRunner.Steal<ScriptState<object>?>("state");
-                if (state != null)
-                {
-                    ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
-                    Debug.WriteLine($"@@@ Complete called for variable `{variable?.Type}`");
-                    if (variable?.Value is RemoteNET.DynamicRemoteObject dro)
-                    {
-                        string? shortTypeName = dro.GetType().FullName;
-                        shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
-
-                        System.Reflection.MemberInfo[]? members = dro.GetType().GetMembers();
-                        List<string> seenMethods = new List<string>();
-                        foreach (System.Reflection.MemberInfo? member in members)
-                        {
-                            string name = member.Name;
-                            string desc = "";
-                            switch (member)
-                            {
-                                case FieldInfo fi:
-                                    desc = $"{(fi.FieldType?.FullName ?? "???")} {shortTypeName}.{name}";
-                                    desc += "\n\n";
-                                    desc += $"NOTE: This is a proxy for a remote {fi?.FieldType?.ToString()?.ToLower()}.\n" +
-                                            "Assume all types will be proxies.\n";
-                                    break;
-                                case PropertyInfo pi:
-                                    desc = $"{pi.GetType().FullName} {shortTypeName}.{name}";
-                                    desc += " { ";
-                                    desc += (pi.GetMethod != null) ? "get; " : String.Empty;
-                                    desc += (pi.SetMethod != null) ? "set; " : String.Empty;
-                                    desc += " }";
-                                    desc += "\n\n";
-                                    desc += $"NOTE: This is a proxy for a remote {pi.PropertyType.ToString().ToLower()}.\n" +
-                                            "Assume all types will be proxies.\n";
-                                    break; ;
-                                case MethodInfo mi:
-                                    if (!seenMethods.Contains(mi.Name))
-                                    {
-                                        var firstOverload = mi;
-                                        string parameters = "";
-                                        foreach (var pi in firstOverload.GetParameters())
-                                        {
-                                            if (parameters != "")
-                                            {
-                                                parameters += ", ";
-                                            }
-
-                                            string? fullTypeName = (pi as RemoteParameterInfo)?.TypeFullName;
-                                            fullTypeName ??= pi.ParameterType.FullName;
-                                            fullTypeName ??= "???";
-
-                                            try
-                                            {
-                                                parameters += $"{fullTypeName} {pi?.Name}";
-                                            }
-                                            catch (Exception)
-                                            {
-                                                parameters += $"??? UnknownName";
-                                            }
-                                        }
-
-                                        string returnType = (firstOverload as RemoteRttiMethodInfo)?.LazyRetType.TypeName;
-                                        returnType ??= firstOverload?.ReturnType?.FullName;
-                                        returnType ??= "???";
-                                        desc = $"{returnType} {name}({parameters})";
-                                        int otherOverloadsCount = members.OfType<MemberInfo>().Where(mi2 => mi2.Name == mi.Name).Count() - 1;
-                                        if (otherOverloadsCount > 0)
-                                        {
-                                            desc += $" ( +{otherOverloadsCount} overloads)";
-                                        }
-                                        desc += "\n\n";
-                                        desc += "NOTE: This is a proxy for a remote function.\n" +
-                                                "Assume all types will be proxies.\n";
-                                    }
-                                    break;
-                            }
-
-
-                            //
-                            // SS: Everything below is cursed.
-                            // We're trying to get a the function `Created` from `CompletionItem`
-                            // But Microsoft REALLY didn't want us to use it, so it's not publish and the arguments list is sh*t.
-                            //
-                            var b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
-                            b = b.Add("SymbolName", name);
-                            b = b.Add("ContextPosition", caret.ToString());
-                            b = b.Add("InsertionText", name);
-                            b = b.Add("ShouldProvideParenthesisCompletion", "True");
-                            b = b.Add("SymbolKind", "9");
-
-                            var iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
-                            iaBuilder = iaBuilder.Add("Method");
-                            iaBuilder = iaBuilder.Add("Public");
-
-                            TextSpan t = new TextSpan(caret, name.Length);
-                            MethodInfo? theCreateFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
-                            {
-                                typeof(string) ,
-                                typeof(string) ,
-                                typeof(string) ,
-                                typeof(TextSpan) ,
-                                typeof(System.Collections.Immutable.ImmutableDictionary<string, string> ) ,
-                                typeof(System.Collections.Immutable.ImmutableArray<string>),
-                                typeof(CompletionItemRules)
-                            });
-                            if (theCreateFuncTheyTriedToHide == null)
-                            {
-                                throw new Exception(
-                                    $"We tried getting the `Create` method (non-public) out of the type {typeof(CompletionItem).FullName} but we failed. " +
-                                    $"MS possibly changed the signatured.");
-                            }
-
-                            object? compItemObj = theCreateFuncTheyTriedToHide?.Invoke(null, [name, name, name, t, b, iaBuilder, null]);
-                            if (compItemObj == null)
-                            {
-                                throw new Exception("Create method returned a null when trying to compose a `CompletionItem`");
-                            }
-                            if (compItemObj is not CompletionItem compItem)
-                            {
-                                throw new Exception(
-                                    $"Create method returned a non-null value but we couldn't cast it to {typeof(CompletionItem).FullName}. " +
-                                    $"Actual type: {compItemObj.GetType().FullName}");
-                            }
-
-                            Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
-                            FormattedString formattedDesc = new FormattedString(desc, ConsoleFormat.None);
-                                var compItemWithDesc = new CompletionItemWithDescription(compItem, name, (cancelToken) => Task.FromResult(formattedDesc));
-                                dynamicallyAssociatedMembers.Add(compItemWithDesc);
-                        }
-                    }
-                }
-            }
-        }
+        List<CompletionItemWithDescription> dynamicallyAssociatedMembers = GetRemoteNetCompletion(text, caret);
 
         var cacheKey = CacheKeyPrefix + document.Name + text + caret;
         if (text != string.Empty && cache.Get<CompletionItemWithDescription[]>(cacheKey) is CompletionItemWithDescription[] cached)
@@ -260,10 +129,10 @@ internal sealed class AutoCompleteService
                 .Select(item => new CompletionItemWithDescription(item, GetDisplayText(item), cancellationToken => GetExtendedDescriptionAsync(completionService, document, item, highlighter)))
                 .ToArray() ?? [];
 
-        // Add auto complete info for dynamically associated members of DynamicRemoteObject
-        completionsWithDescriptions = completionsWithDescriptions.Concat(dynamicallyAssociatedMembers).ToArray();
+            // Add auto complete info for dynamically associated members of DynamicRemoteObject
+            completionsWithDescriptions = completionsWithDescriptions.Concat(dynamicallyAssociatedMembers).ToArray();
 
-        cache.Set(cacheKey, completionsWithDescriptions, DateTimeOffset.Now.AddMinutes(1));
+            cache.Set(cacheKey, completionsWithDescriptions, DateTimeOffset.Now.AddMinutes(1));
 
             return completionsWithDescriptions;
         }
@@ -286,6 +155,191 @@ internal sealed class AutoCompleteService
             }
             return text;
         }
+    }
+
+    private List<CompletionItemWithDescription> GetRemoteNetCompletion(string text, int caret)
+    {
+        var emptyResults = new List<CompletionItemWithDescription>();
+        string[]? parts = HackyVariableNameParser(text, caret);
+        string? varName = parts?.FirstOrDefault();
+        if (varName == null)
+            return emptyResults;
+
+        ScriptState<object>? state = parent.DeepSteal<ScriptState<object>?>("scriptRunner.state");
+        if (state == null)
+            return emptyResults;
+
+        ScriptVariable? variable = state.Variables.FirstOrDefault(x => x.Name == varName);
+        Debug.WriteLine($"@@@ Complete called for variable `{variable?.Type}`");
+        if (variable?.Value is not RemoteNET.DynamicRemoteObject dro)
+            return emptyResults;
+
+        // OLD CODE: Naive just thought we had ONE part - the name of the variable:
+        // ```
+        // Type finalType = dro.GetType();
+        // ```
+        // NEW CODE: Recursively visit fields/methods/properties of the object
+        Type? finalType = dro?.GetType();
+        int partIndex = 1;
+        while (partIndex < parts.Length && finalType != null)
+        {
+            string part = parts[partIndex];
+            FieldInfo? field = finalType.GetField(part);
+            if (field != null)
+            {
+                finalType = field.FieldType;
+                partIndex++;
+                continue;
+            }
+            PropertyInfo? prop = finalType.GetProperty(part);
+            if (prop != null)
+            {
+                finalType = prop.PropertyType;
+                partIndex++;
+                continue;
+            }
+            MethodInfo? method = finalType.GetMethod(part);
+            if (method != null)
+            {
+                finalType = method.ReturnType;
+                partIndex++;
+                continue;
+            }
+            return emptyResults;
+        }
+
+        if (finalType == null)
+            return emptyResults;
+
+        return CompileRemoteNetSuggestionsForType(caret, finalType);
+    }
+
+    private static List<CompletionItemWithDescription> CompileRemoteNetSuggestionsForType(int caret, Type finalType)
+    {
+        List<CompletionItemWithDescription> res = new List<CompletionItemWithDescription>();
+
+        string? shortTypeName = finalType.FullName;
+        shortTypeName = shortTypeName?.Substring(shortTypeName.LastIndexOf('.') + 1);
+
+        MemberInfo[]? members = finalType.GetMembers();
+        List<string> seenMethods = new List<string>();
+        foreach (System.Reflection.MemberInfo? member in members)
+        {
+            string name = member.Name;
+            string desc = "";
+            switch (member)
+            {
+                case FieldInfo fi:
+                    desc = $"{(fi.FieldType?.FullName ?? "???")} {shortTypeName}.{name}";
+                    desc += "\n\n";
+                    desc += $"NOTE: This is a proxy for a remote {fi?.FieldType?.ToString()?.ToLower()}.\n" +
+                            "Assume all types will be proxies.\n";
+                    break;
+                case PropertyInfo pi:
+                    desc = $"{pi.GetType().FullName} {shortTypeName}.{name}";
+                    desc += " { ";
+                    desc += (pi.GetMethod != null) ? "get; " : String.Empty;
+                    desc += (pi.SetMethod != null) ? "set; " : String.Empty;
+                    desc += " }";
+                    desc += "\n\n";
+                    desc += $"NOTE: This is a proxy for a remote {pi.PropertyType.ToString().ToLower()}.\n" +
+                            "Assume all types will be proxies.\n";
+                    break; ;
+                case MethodInfo mi:
+                    if (!seenMethods.Contains(mi.Name))
+                    {
+                        var firstOverload = mi;
+                        string parameters = "";
+                        foreach (var pi in firstOverload.GetParameters())
+                        {
+                            if (parameters != "")
+                            {
+                                parameters += ", ";
+                            }
+
+                            string? fullTypeName = (pi as RemoteParameterInfo)?.TypeFullName;
+                            fullTypeName ??= pi.ParameterType.FullName;
+                            fullTypeName ??= "???";
+
+                            try
+                            {
+                                parameters += $"{fullTypeName} {pi?.Name}";
+                            }
+                            catch (Exception)
+                            {
+                                parameters += $"??? UnknownName";
+                            }
+                        }
+
+                        string returnType = (firstOverload as RemoteRttiMethodInfo)?.LazyRetType.TypeName;
+                        returnType ??= firstOverload?.ReturnType?.FullName;
+                        returnType ??= "???";
+                        desc = $"{returnType} {name}({parameters})";
+                        int otherOverloadsCount = members.OfType<MemberInfo>().Where(mi2 => mi2.Name == mi.Name).Count() - 1;
+                        if (otherOverloadsCount > 0)
+                        {
+                            desc += $" ( +{otherOverloadsCount} overloads)";
+                        }
+                        desc += "\n\n";
+                        desc += "NOTE: This is a proxy for a remote function.\n" +
+                                "Assume all types will be proxies.\n";
+                    }
+                    break;
+            }
+
+            //
+            // SS: Everything below is cursed.
+            // We're trying to get a the function `Created` from `CompletionItem`
+            // But Microsoft REALLY didn't want us to use it, so it's not public and the arguments list is sh*t.
+            //
+            var b = System.Collections.Immutable.ImmutableDictionary<string, string>.Empty;
+            b = b.Add("SymbolName", name);
+            b = b.Add("ContextPosition", caret.ToString());
+            b = b.Add("InsertionText", name);
+            b = b.Add("ShouldProvideParenthesisCompletion", "True");
+            b = b.Add("SymbolKind", "9");
+
+            var iaBuilder = System.Collections.Immutable.ImmutableArray<string>.Empty;
+            iaBuilder = iaBuilder.Add("Method");
+            iaBuilder = iaBuilder.Add("Public");
+
+            TextSpan t = new TextSpan(caret, name.Length);
+            MethodInfo? theCreateFuncTheyTriedToHide = typeof(CompletionItem).GetMethod("Create", (BindingFlags)0xffff, new Type[]
+            {
+                typeof(string),
+                typeof(string),
+                typeof(string),
+                typeof(TextSpan),
+                typeof(System.Collections.Immutable.ImmutableDictionary<string, string>),
+                typeof(System.Collections.Immutable.ImmutableArray<string>),
+                typeof(CompletionItemRules)
+            });
+            if (theCreateFuncTheyTriedToHide == null)
+            {
+                throw new Exception(
+                    $"We tried getting the `Create` method (non-public) out of the type {typeof(CompletionItem).FullName} but we failed. " +
+                    $"MS possibly changed the signatured.");
+            }
+
+            object? compItemObj = theCreateFuncTheyTriedToHide?.Invoke(null, [name, name, name, t, b, iaBuilder, null]);
+            if (compItemObj == null)
+            {
+                throw new Exception("Create method returned a null when trying to compose a `CompletionItem`");
+            }
+            if (compItemObj is not CompletionItem compItem)
+            {
+                throw new Exception(
+                    $"Create method returned a non-null value but we couldn't cast it to {typeof(CompletionItem).FullName}. " +
+                    $"Actual type: {compItemObj.GetType().FullName}");
+            }
+
+            Lazy<Task<string>> lazyTask = new Lazy<Task<string>>(() => Task.FromResult(desc));
+            FormattedString formattedDesc = new FormattedString(desc, ConsoleFormat.None);
+            var compItemWithDesc = new CompletionItemWithDescription(compItem, name, (cancelToken) => Task.FromResult(formattedDesc));
+            res.Add(compItemWithDesc);
+        }
+
+        return res;
     }
 
     public static string GetCompletionItemSymbolPrefix(string? classification, bool useUnicode)
