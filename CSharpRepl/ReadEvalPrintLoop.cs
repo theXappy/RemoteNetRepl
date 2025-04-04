@@ -48,11 +48,12 @@ internal sealed class ReadEvalPrintLoop
 
         await Preload(roslyn, console, config).ConfigureAwait(false);
 
-        string[] remoteNetUsings = new string[2]
-        {
+        string[] remoteNetUsings =
+        [
             "using RemoteNET;",
+            "using RemoteNET.Access;",
             "using Process = System.Diagnostics.Process;",
-        };
+        ];
         Console.WriteLine("Applying predifined `using` statements...");
         foreach (string usingStatement in remoteNetUsings)
         {
