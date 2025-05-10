@@ -46,7 +46,7 @@ internal sealed class AutoCompleteService
     }
 
 
-    private string[]? HackyVariableNameParser(string text, int caret)
+    private string?[]? HackyVariableNameParser(string text, int caret)
     {
         if (text.Length == 0 || caret > text.Length)
             return null;
@@ -160,9 +160,9 @@ internal sealed class AutoCompleteService
     private List<CompletionItemWithDescription> GetRemoteNetCompletion(string text, int caret)
     {
         var emptyResults = new List<CompletionItemWithDescription>();
-        string[]? parts = HackyVariableNameParser(text, caret);
+        string?[]? parts = HackyVariableNameParser(text, caret);
         string? varName = parts?.FirstOrDefault();
-        if (varName == null)
+        if (parts == null || varName == null)
             return emptyResults;
 
         ScriptState<object>? state = parent.DeepSteal<ScriptState<object>?>("scriptRunner.state");
@@ -183,7 +183,9 @@ internal sealed class AutoCompleteService
         int partIndex = 1;
         while (partIndex < parts.Length && finalType != null)
         {
-            string part = parts[partIndex];
+            string? part = parts[partIndex];
+            if (part == null)
+                throw new Exception("WTF");
             FieldInfo? field = finalType.GetField(part);
             if (field != null)
             {
@@ -271,7 +273,7 @@ internal sealed class AutoCompleteService
                             }
                         }
 
-                        string returnType = (firstOverload as RemoteRttiMethodInfo)?.LazyRetType.TypeName;
+                        string? returnType = (firstOverload as RemoteRttiMethodInfo)?.LazyRetType.TypeName;
                         returnType ??= firstOverload?.ReturnType?.FullName;
                         returnType ??= "???";
                         desc = $"{returnType} {name}({parameters})";

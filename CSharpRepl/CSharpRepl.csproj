@@ -3,7 +3,7 @@
   <PropertyGroup>
     <Version>0.6.7</Version>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net7.0-windows</TargetFramework>
+    <TargetFramework>net8.0</TargetFramework>
     <RollForward>LatestMajor</RollForward>
     <LangVersion>13.0</LangVersion>
     <Nullable>enable</Nullable>
